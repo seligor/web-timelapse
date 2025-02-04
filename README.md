@@ -4,7 +4,28 @@
  '''sudo apt install nginx php-fpm ffmpeg'''
 Это потребует примерно 400-500 МБ места из за большого количества зависимостей
 
-git clone 
+К настройке nginx относится буквально подключение php-fpm
+Я просто добавил эту секцию
+'''
+        location ~* \.php$ {
+        try_files $uri = 404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock; # подключаем сокет php-fpm
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+'''
+
+Обратите внимание на то, что для '''fastcgi_pass''' указана версия php8.2-fpm - у вас версия может отличаться. 
+
+'''
+cd /var/www/html
+git clone https://github.com/seligor/web-timelapse.git
+cd /var/www/html/web-timelapse
+ln -s /home/tbot/ff5m1/timelapse_finished timelapse
+'''
+вместо /home/tbot/ff5m1/timelapse_finished нужно подставить правильный путь, который у вас будет отличаться (вы указывали его при установке бота), проверьте каталог /home
+
 Что делает: 
 1. обращается к папке с таймлапсами, считает длительность видео, берёт кадр из последних секунд видео, отображает этот кадр в виде превью, чтобы вы видели конечный результат
 2. По нажатию на превью - можно посмотреть в браузере видео
