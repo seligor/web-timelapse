@@ -118,7 +118,9 @@ try {
             <?php foreach ($fileList as $file): ?>
                 <li>
                     <div class="thumbnail">
-                        <a href="<?php echo $file['path']; ?>" target="_self"><img src="<?php echo $file['thumbnail']; ?>" alt="Превью"></a>
+                        <a href="<?php echo $file['path']; ?>" target="_self">
+                            <img src="<?php echo $file['thumbnail']; ?>" alt="Превью">
+                        </a>
                     </div>
                     <span class="file-date"><?php echo date('Y-m-d H:i:s', $file['modified_time']); ?></span>
                     <a href="<?php echo $file['path']; ?>" class="download-btn" download>Скачать</a>
@@ -128,3 +130,4 @@ try {
     </div>
 </body>
 </html>
+
