@@ -49,10 +49,11 @@ try {
         // Полный путь к файлу
         $filePath = $videoDir . '/' . $file;
 
-        // Проверяем, содержит ли имя файла пробелы
-        if (strpos($file, ' ') !== false) {
-            // Заменяем пробелы на _
-            $newFileName = str_replace(' ', '_', $file);
+        // Проверяем, есть ли пробелы и скобки
+        $newFileName = str_replace([' ', '(', ')'], '_', $file);
+        if ($newFileName !== $file) {
+            // Заменяем пробелы и скобки на _
+
             $newFilePath = $videoDir . '/' . $newFileName;
             rename($filePath, $newFilePath); // Переименовываем файл
             $file = $newFileName; // Обновляем имя файла для дальнейшей обработки
