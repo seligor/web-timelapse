@@ -2,7 +2,9 @@
 // Путь к каталогу с видеофайлами
 // Это может быть результат символической ссылки на директорию готовых таймлапсов бота. У меня это путь /home/tbot/ff5m1/timelapse_finished
 // (вы уже установили бота и он куда то собирает таймлапсы. Просто протяните эту директорию до /var/www/html/web-timelapse/timelapse
-$videoDir = 'timelapse';
+// добавил возможность брать данные из нескольких папок(несколько принтеров, несколько ботов)
+// Массив каталогов с видеофайлами
+$videoDirs = ['timelapse', 'timelapse_ff5m2'];
 
 // Функция для создания превью из последнего кадра
 function createThumbnail($videoPath, $thumbnailPath) {
@@ -38,57 +40,66 @@ function createThumbnail($videoPath, $thumbnailPath) {
 }
 
 try {
-    // Получаем список файлов в каталоге с видео
-    $files = scandir($videoDir);
-    $files = array_diff($files, array('.', '..'));
-
     // Массив для хранения информации о файлах
     $fileList = [];
 
-    foreach ($files as $file) {
-        // Полный путь к файлу
-        $filePath = $videoDir . '/' . $file;
-
-        // Проверяем, есть ли пробелы и скобки
-        $newFileName = str_replace([' ', '(', ')'], '_', $file);
-        if ($newFileName !== $file) {
-            // Заменяем пробелы и скобки на _
-
-            $newFilePath = $videoDir . '/' . $newFileName;
-            rename($filePath, $newFilePath); // Переименовываем файл
-            $file = $newFileName; // Обновляем имя файла для дальнейшей обработки
-            $filePath = $newFilePath; // Обновляем путь к файлу
-            error_log("Файл переименован: {$filePath} -> {$newFilePath}");
+    // Обрабатываем каждую директорию
+    foreach ($videoDirs as $videoDir) {
+        // Проверяем существование директории
+        if (!is_dir($videoDir)) {
+            error_log("Директория {$videoDir} не существует или не является директорией");
+            continue;
         }
 
-        if (pathinfo($file, PATHINFO_EXTENSION) === 'mp4') {
-            // Проверяем MIME-тип файла
-            $mimeType = mime_content_type($filePath);
-            if (strpos($mimeType, 'video/') !== 0) {
-                error_log("Файл {$filePath} не является видео (MIME-тип: {$mimeType})");
-                continue; // Пропускаем файл
+        // Получаем список файлов в каталоге с видео
+        $files = scandir($videoDir);
+        $files = array_diff($files, array('.', '..'));
+
+        foreach ($files as $file) {
+            // Полный путь к файлу
+            $filePath = $videoDir . '/' . $file;
+
+            // Проверяем, содержит ли имя файла пробелы
+            $newFileName = str_replace([' ', '(', ')'], '_', $file);
+            if ($newFileName !== $file) {
+                // Заменяем пробелы на _
+                $newFilePath = $videoDir . '/' . $newFileName;
+                rename($filePath, $newFilePath); // Переименовываем файл
+                $file = $newFileName; // Обновляем имя файла для дальнейшей обработки
+                $filePath = $newFilePath; // Обновляем путь к файлу
+                error_log("Файл переименован: {$filePath} -> {$newFilePath}");
             }
 
-            // Путь для превью (в том же каталоге, что и видео)
-            $thumbnail = $videoDir . '/' . pathinfo($file, PATHINFO_FILENAME) . '.jpg';
-
-            try {
-                // Если превью ещё не создано, создаём его
-                if (!file_exists($thumbnail)) {
-                    createThumbnail($filePath, $thumbnail);
+            if (pathinfo($file, PATHINFO_EXTENSION) === 'mp4') {
+                // Проверяем MIME-тип файла
+                $mimeType = mime_content_type($filePath);
+                if (strpos($mimeType, 'video/') !== 0) {
+                    error_log("Файл {$filePath} не является видео (MIME-тип: {$mimeType})");
+                    continue; // Пропускаем файл
                 }
 
-                // Добавляем информацию о файле в массив
-                $fileList[] = [
-                    'name' => $file,
-                    'path' => 'timelapse/' . $file, // Относительный путь к файлу
-                    'thumbnail' => 'timelapse/' . pathinfo($file, PATHINFO_FILENAME) . '.jpg', // Относительный путь к превью
-                    'modified_time' => filemtime($filePath) // Время последнего изменения файла
-                ];
-            } catch (Exception $e) {
-                // Логируем ошибку и продолжаем обработку
-                error_log($e->getMessage());
-                continue;
+                // Путь для превью (в том же каталоге, что и видео)
+                $thumbnail = $videoDir . '/' . pathinfo($file, PATHINFO_FILENAME) . '.jpg';
+
+                try {
+                    // Если превью ещё не создано, создаём его
+                    if (!file_exists($thumbnail)) {
+                        createThumbnail($filePath, $thumbnail);
+                    }
+
+                    // Добавляем информацию о файле в массив
+                    $fileList[] = [
+                        'name' => $file,
+                        'path' => $videoDir . '/' . $file, // Относительный путь к файлу
+                        'thumbnail' => $videoDir . '/' . pathinfo($file, PATHINFO_FILENAME) . '.jpg', // Относительный путь к превью
+                        'modified_time' => filemtime($filePath), // Время последнего изменения файла
+                        'source_dir' => $videoDir // Добавляем информацию о папке-источнике
+                    ];
+                } catch (Exception $e) {
+                    // Логируем ошибку и продолжаем обработку
+                    error_log($e->getMessage());
+                    continue;
+                }
             }
         }
     }
@@ -124,6 +135,7 @@ try {
                         </a>
                     </div>
                     <span class="file-date"><?php echo date('Y-m-d H:i:s', $file['modified_time']); ?></span>
+                    <span class="file-source">(<?php echo $file['source_dir']; ?>)</span>
                     <a href="<?php echo $file['path']; ?>" class="download-btn" download>Скачать</a>
                 </li>
             <?php endforeach; ?>
@@ -131,4 +143,3 @@ try {
     </div>
 </body>
 </html>
-
